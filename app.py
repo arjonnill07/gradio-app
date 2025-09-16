@@ -8,7 +8,6 @@ import gradio as gr
 import pandas as pd
 import numpy as np
 import torch
-import re
 import sqlite3
 import json
 import logging
@@ -21,11 +20,8 @@ from io import StringIO
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 
-# --- APIs and Web Scraping ---
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from GoogleNews import GoogleNews
-from urllib.error import HTTPError
+# --- NLP & Machine Learning ---
+# BanglaBERT tokenizer removed for simplicity
 import dateparser
 
 # --- NLP & Machine Learning ---
@@ -69,6 +65,30 @@ except OSError:
 
 # ==============================================================================
 # CORE HELPER FUNCTIONS
+def clean_bengali_text(text):
+    # Remove non-Bengali characters except spaces and underscores (for joined phrases)
+    # Preserve word shapes by not removing valid combining marks
+    cleaned = re.sub(r'[^\u0980-\u09FF_\s]', '', str(text))
+    # Remove extra spaces
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    return cleaned
+NOTEBOOK_STOPWORDS = set([
+    'এবং', 'ও', 'বা', 'কিংবা', 'অথবা', 'কিন্তু', 'এর', 'এ', 'এই', 'সেই', 'ওই', 'এক', 'জন্য',
+    'আমার', 'তোমার', 'তার', 'আমাদের', 'তাদের', 'সে', 'তিনি', 'আমি', 'তুমি', 'যে', 'যায়', 'হয়',
+    'হবে', 'ছিল', 'আছে', 'নেই', 'এটা', 'ওটা', 'সেটা', 'করে', 'করতে', 'করেছে', 'করছেন', 'থেকে',
+    'সাথে', 'মধ্যে', 'উপরে', 'নিচে', 'পরে', 'আগে', 'শুধু', 'খুব', 'অনেক', 'আরও', 'হিসাবে', 'তাহলে',
+    'হলে', 'তাই', 'সুতরাং', 'কারণে', 'একটি', 'হয়ে', 'হয়েছিল', 'হচ্ছে', 'হয়েছে', 'না', 'হ্যাঁ', 'কি',
+    'কী', 'কে', 'কোন', 'গুলো', 'কিছু', 'বলেন', 'বললেন', 'বলল', 'আর', 'ভাই', 'হোক', 'চাই', 'বাদ',
+    'দিতে', 'দিয়ে', 'দিলেন', 'দেন', 'যাবে', 'যাক', 'পারা', 'পারে', 'করা', 'করি', 'করার', 'করছে',
+    'করবে', 'সব', 'এখন', 'যদি', 'কেন', 'কবে', 'কেমন', 'ইনশাআল্লাহ', 'আপনি', 'আপনার', 'আপনারা', 'আমরা'
+])
+COMBINED_STOPWORDS = set(BANGLA_STOP_WORDS) | NOTEBOOK_STOPWORDS
+PHRASES_TO_JOIN = {
+    "তারেক রহমান": "তারেক_রহমান",
+    "খালেদা জিয়া": "খালেদা_জিয়া",
+    "বিএনপি জিন্দাবাদ": "বিএনপি_জিন্দাবাদ"
+    # Add more as needed
+}
 # ==============================================================================
 
 BANGLA_STOP_WORDS = [
@@ -350,20 +370,41 @@ def generate_scraper_dashboard(df: pd.DataFrame):
         ax.set_yticklabels(media_counts.index, fontproperties=BANGLA_FONT); ax.set_xlabel("Article Count"); plt.tight_layout()
 
     text = " ".join(title for title in df['title'].astype(str))
+    text = clean_bengali_text(text)
+    for phrase, joined in PHRASES_TO_JOIN.items():
+        text = text.replace(phrase, joined)
     fig_wc = None
     try:
-        tokenizer = get_bangla_tokenizer()
-        if tokenizer:
-            # Tokenize and filter out stopwords and short tokens
-            tokens = tokenizer.tokenize(text)
-            words = [w for w in tokens if w not in BANGLA_STOP_WORDS and len(w) > 1 and not w.startswith("▁") and re.match(r'^[\u0980-\u09FF]+$', w)]
-            words = [w.replace("▁", "") for w in words if w.replace("▁", "")]
-            wc_text = " ".join(words)
-        else:
-            wc_text = text
-        wc = WordCloud(font_path=FONT_PATH, width=800, height=400, background_color='white', stopwords=BANGLA_STOP_WORDS, collocations=True, colormap='viridis').generate(wc_text)
-        fig_wc, ax = plt.subplots(figsize=(10, 5)); ax.imshow(wc, interpolation='bilinear'); ax.axis("off")
-    except Exception as e: logger.error(f"WordCloud failed: {e}")
+        words = re.findall(r'[\u0980-\u09FF_]{2,}', text)
+        words = [w for w in words if w not in COMBINED_STOPWORDS]
+        words = [w for w in words if len(w) > 1]
+        words = [w for w in words if not re.search(r'[a-zA-Z]', w)]
+        from collections import Counter
+        word_freq = Counter(words)
+        min_freq = 2
+        most_common = set([w for w, _ in word_freq.most_common(3)])
+        filtered_words = [w for w in words if word_freq[w] >= min_freq and w not in most_common]
+        wc_text = " ".join(filtered_words)
+        wc = WordCloud(
+            font_path=FONT_PATH,
+            width=1600,
+            height=900,
+            background_color='white',
+            stopwords=COMBINED_STOPWORDS,
+            collocations=False,
+            colormap='plasma',
+            max_words=200,
+            contour_width=2,
+            contour_color='steelblue',
+            regexp=r"[\u0980-\u09FF_]+"
+        ).generate(wc_text)
+        fig_wc, ax = plt.subplots(figsize=(15, 8))
+        ax.imshow(wc, interpolation='bilinear')
+        ax.axis("off")
+        ax.set_title("Bengali Headline Word Cloud", fontproperties=BANGLA_FONT, fontsize=22)
+        plt.tight_layout()
+    except Exception as e:
+        gr.Warning(f"WordCloud failed: {e}")
     
     return {
         kpi_total_articles: str(total_articles), kpi_unique_media: str(unique_media), kpi_date_range: date_range_str,
@@ -446,22 +487,42 @@ def generate_youtube_dashboard(videos_df, comments_df):
             except Exception as e:
                 logger.error(f"Error in comment activity plot: {e}")
 
-        # Word cloud (improved: only Bengali words, no sentiment)
+        # Beautiful Bengali word cloud from YouTube comments
         fig_wc, ax = None, None
         if 'comment_text' in comments_df.columns:
             text = " ".join(comment for comment in comments_df['comment_text'].astype(str))
+            text = clean_bengali_text(text)
+            for phrase, joined in PHRASES_TO_JOIN.items():
+                text = text.replace(phrase, joined)
             try:
-                tokenizer = get_bangla_tokenizer()
-                if tokenizer:
-                    tokens = tokenizer.tokenize(text)
-                    words = [w for w in tokens if w not in BANGLA_STOP_WORDS and len(w) > 1 and not w.startswith("▁") and re.match(r'^[\u0980-\u09FF]+$', w)]
-                    words = [w.replace("▁", "") for w in words if w.replace("▁", "")]
-                    wc_text = " ".join(words)
-                else:
-                    wc_text = text
-                wc = WordCloud(font_path=FONT_PATH, width=900, height=450, background_color='white', stopwords=BANGLA_STOP_WORDS, collocations=True, colormap='plasma').generate(wc_text)
-                fig_wc, ax = plt.subplots(figsize=(12, 6)); ax.imshow(wc, interpolation='bilinear'); ax.axis("off"); ax.set_title("Bengali Word Cloud from Comments", fontproperties=BANGLA_FONT)
-                plt.close(fig_wc)
+                words = re.findall(r'[\u0980-\u09FF_]{2,}', text)
+                words = [w for w in words if w not in COMBINED_STOPWORDS]
+                words = [w for w in words if len(w) > 1]
+                words = [w for w in words if not re.search(r'[a-zA-Z]', w)]
+                from collections import Counter
+                word_freq = Counter(words)
+                min_freq = 2
+                most_common = set([w for w, _ in word_freq.most_common(3)])
+                filtered_words = [w for w in words if word_freq[w] >= min_freq and w not in most_common]
+                wc_text = " ".join(filtered_words)
+                wc = WordCloud(
+                    font_path=FONT_PATH,
+                    width=1600,
+                    height=900,
+                    background_color='white',
+                    stopwords=COMBINED_STOPWORDS,
+                    collocations=False,
+                    colormap='plasma',
+                    max_words=250,
+                    contour_width=2,
+                    contour_color='darkorange',
+                    regexp=r"[\u0980-\u09FF_]+"
+                ).generate(wc_text)
+                fig_wc, ax = plt.subplots(figsize=(15, 8))
+                ax.imshow(wc, interpolation='bilinear')
+                ax.axis("off")
+                ax.set_title("Bengali Word Cloud from YouTube Comments", fontproperties=BANGLA_FONT, fontsize=22)
+                plt.tight_layout()
             except Exception as e:
                 logger.error(f"YouTube WordCloud failed: {e}")
 
