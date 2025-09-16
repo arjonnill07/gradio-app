@@ -117,31 +117,7 @@ def get_bangla_tokenizer():
 # ==============================================================================
 
 
-SENTIMENT_MODEL_ID = 'ahs95/banglabert-sentiment-analysis'
-MODELS = {"sentiment_pipeline": None}
-
-def _load_pipeline_with_retry(task, model_id, retries=3):
-    logger.info(f"Initializing {task} pipeline for model: {model_id}")
-    for attempt in range(retries):
-        try:
-            device = 0 if torch.cuda.is_available() else -1
-            if device == -1: gr.Warning(f"{model_id} will run on CPU and may be very slow.")
-            pipe = pipeline(task, model=model_id, device=device)
-            logger.info(f"Pipeline '{task}' loaded successfully.")
-            return pipe
-        except (HfHubHTTPError, requests.exceptions.ConnectionError) as e:
-            logger.warning(f"Network error on loading {model_id} (Attempt {attempt + 1}/{retries}): {e}")
-            if attempt < retries - 1: time.sleep(5)
-            else: raise gr.Error(f"Failed to download model '{model_id}' after {retries} attempts. Check network.")
-        except Exception as e:
-            logger.error(f"An unexpected error occurred while loading {model_id}: {e}")
-            raise gr.Error(f"Could not initialize model '{model_id}'. Error: {e}")
-    return None
-
-def get_sentiment_pipeline():
-    if MODELS["sentiment_pipeline"] is None:
-        MODELS["sentiment_pipeline"] = _load_pipeline_with_retry("sentiment-analysis", SENTIMENT_MODEL_ID)
-    return MODELS["sentiment_pipeline"]
+## Sentiment pipeline code removed for optimization
 
 # ==============================================================================
 # NEWS SCRAPER BACKEND
@@ -161,35 +137,35 @@ def run_news_scraper_pipeline(search_keywords, sites, start_date_str, end_date_s
 
     all_articles, current_dt = [], start_dt
     while current_dt <= end_dt:
-        interval_end_dt = min(current_dt + pd.Timedelta(days=interval - 1), end_dt)
-        start_str, end_str = current_dt.strftime('%Y-%m-%d'), interval_end_dt.strftime('%Y-%m-%d')
-        progress(0, desc=f"Fetching news from {start_str} to {end_str}")
-
-        site_query = f"({' OR '.join(['site:' + s.strip() for s in sites.split(',') if s.strip()])})" if sites else ""
-        final_query = f'"{search_keywords}" {site_query} after:{start_str} before:{end_str}'
-
-        googlenews = GoogleNews(lang='bn', region='BD')
-        googlenews.search(final_query)
-        
-        for page in range(1, max_pages + 1):
-            try:
-                results = googlenews.results()
-                if not results: break
-                all_articles.extend(results)
-                if page < max_pages:
-                    googlenews.getpage(page + 1)
-                    time.sleep(random.uniform(2, 5))
-            except HTTPError as e:
-                if e.code == 429:
-                    wait_time = random.uniform(15, 30)
-                    gr.Warning(f"Rate limited by Google News. Pausing for {wait_time:.0f} seconds.")
-                    time.sleep(wait_time)
-                else:
-                    logger.error(f"HTTP Error fetching news: {e}"); break
-            except Exception as e:
-                logger.error(f"An error occurred fetching news: {e}"); break
-        
-        current_dt += pd.Timedelta(days=interval)
+        try:
+            interval_end_dt = min(current_dt + pd.Timedelta(days=interval - 1), end_dt)
+            start_str, end_str = current_dt.strftime('%Y-%m-%d'), interval_end_dt.strftime('%Y-%m-%d')
+            progress(0, desc=f"Fetching news from {start_str} to {end_str}")
+            site_query = f"({' OR '.join(['site:' + s.strip() for s in sites.split(',') if s.strip()])})" if sites else ""
+            final_query = f'"{search_keywords}" {site_query} after:{start_str} before:{end_str}'
+            googlenews = GoogleNews(lang='bn', region='BD')
+            googlenews.search(final_query)
+            for page in range(1, max_pages + 1):
+                try:
+                    results = googlenews.results()
+                    if not results: break
+                    all_articles.extend(results)
+                    if page < max_pages:
+                        googlenews.getpage(page + 1)
+                        time.sleep(0.5) # Reduced sleep for performance
+                except HTTPError as e:
+                    if e.code == 429:
+                        wait_time = 5 # Reduced wait for optimization
+                        gr.Warning(f"Rate limited by Google News. Pausing for {wait_time:.0f} seconds.")
+                        time.sleep(wait_time)
+                    else:
+                        logger.error(f"HTTP Error fetching news: {e}"); break
+                except Exception as e:
+                    logger.error(f"An error occurred fetching news: {e}"); break
+            current_dt += pd.Timedelta(days=interval)
+        except Exception as e:
+            logger.error(f"Error in news scraping loop: {e}")
+            break
 
     if not all_articles: return pd.DataFrame(), pd.DataFrame()
     
@@ -353,22 +329,7 @@ def set_plot_style():
     plt.rcParams['figure.dpi'] = 100
 
 def run_sentiment_analysis(df: pd.DataFrame, text_column: str, progress=gr.Progress()):
-    if text_column not in df.columns: return df
-    sentiment_pipeline = get_sentiment_pipeline()
-    if not sentiment_pipeline:
-        gr.Warning("Sentiment model failed to load. Skipping analysis.")
-        return df
-
-    texts = df[text_column].dropna().tolist()
-    if not texts: return df
-
-    progress(0, desc="Running sentiment analysis...")
-    results = sentiment_pipeline(texts, batch_size=32)
-
-    text_to_sentiment = {text: result for text, result in zip(texts, results)}
-    df['sentiment_label'] = df[text_column].map(lambda x: text_to_sentiment.get(x, {}).get('label'))
-    df['sentiment_score'] = df[text_column].map(lambda x: text_to_sentiment.get(x, {}).get('score'))
-    logger.info("Sentiment analysis complete.")
+    # Sentiment analysis removed
     return df
 
 def generate_scraper_dashboard(df: pd.DataFrame):
@@ -411,89 +372,98 @@ def generate_scraper_dashboard(df: pd.DataFrame):
     }
 
 def generate_sentiment_dashboard(df: pd.DataFrame):
-    updates = {sentiment_dashboard_tab: gr.update(visible=False)}
-    set_plot_style()
-    
-    if 'sentiment_label' in df.columns:
-        sentiment_counts = df['sentiment_label'].value_counts()
-        fig_pie, fig_media_sent = None, None
-        if not sentiment_counts.empty:
-            fig_pie, ax = plt.subplots(figsize=(6, 6)); ax.pie(sentiment_counts, labels=sentiment_counts.index, autopct='%1.1f%%', startangle=90, colors=['#66c2a5', '#fc8d62', '#8da0cb'])
-            ax.set_title("Overall Sentiment Distribution", fontproperties=BANGLA_FONT); ax.axis('equal')
-        
-        top_media = df['media'].value_counts().nlargest(10).index
-        media_sentiment = pd.crosstab(df[df['media'].isin(top_media)]['media'], df['sentiment_label'], normalize='index').mul(100)
-        if not media_sentiment.empty:
-            fig_media_sent, ax = plt.subplots(figsize=(10, 7)); media_sentiment.plot(kind='barh', stacked=True, ax=ax, colormap='viridis')
-            ax.set_title("Sentiment by Top Media Sources", fontproperties=BANGLA_FONT); ax.set_yticklabels(media_sentiment.index, fontproperties=BANGLA_FONT); plt.tight_layout()
-        
-        updates.update({sentiment_pie_plot: fig_pie, sentiment_by_media_plot: fig_media_sent, sentiment_dashboard_tab: gr.update(visible=True)})
-    return updates
+    # Sentiment dashboard removed
+    return {sentiment_dashboard_tab: gr.update(visible=False)}
 
 def generate_youtube_dashboard(videos_df, comments_df):
     set_plot_style()
     kpis = {
-        kpi_yt_videos_found: f"{len(videos_df):,}" if videos_df is not None else "0",
-        kpi_yt_views_scanned: f"{videos_df['view_count'].sum():,}" if videos_df is not None else "0",
-        kpi_yt_comments_scraped: f"{len(comments_df):,}" if comments_df is not None else "0"
+        kpi_yt_videos_found: f"{len(videos_df):,}" if videos_df is not None and not videos_df.empty else "0",
+        kpi_yt_views_scanned: f"{videos_df['view_count'].sum():,}" if videos_df is not None and not videos_df.empty and 'view_count' in videos_df.columns else "0",
+        kpi_yt_comments_scraped: f"{len(comments_df):,}" if comments_df is not None and not comments_df.empty else "0"
     }
     
-    channel_counts = videos_df['channel'].value_counts().nlargest(15).sort_values()
-    fig_channels, ax = plt.subplots(figsize=(8, 6))
-    if not channel_counts.empty:
-        channel_counts.plot(kind='barh', ax=ax, color='coral'); ax.set_title("Top 15 Channels by Video Volume", fontproperties=BANGLA_FONT); ax.set_yticklabels(channel_counts.index, fontproperties=BANGLA_FONT); plt.tight_layout()
+    fig_channels, ax = None, None
+    if videos_df is not None and not videos_df.empty and 'channel' in videos_df.columns:
+        channel_counts = videos_df['channel'].value_counts().nlargest(15).sort_values()
+        if not channel_counts.empty:
+            fig_channels, ax = plt.subplots(figsize=(8, 6))
+            channel_counts.plot(kind='barh', ax=ax, color='coral'); ax.set_title("Top 15 Channels by Video Volume", fontproperties=BANGLA_FONT); ax.set_yticklabels(channel_counts.index, fontproperties=BANGLA_FONT); plt.tight_layout()
 
     # Rich analytics: engagement, top videos, comment activity, time series, etc.
     fig_wc, fig_top_videos, fig_engagement, fig_comment_activity, fig_time_series = None, None, None, None, None
     if comments_df is not None and not comments_df.empty:
         # Top commented videos
-        top_videos = comments_df['video_title'].value_counts().nlargest(10)
-        fig_top_videos, ax = plt.subplots(figsize=(10, 6))
-        top_videos.plot(kind='barh', ax=ax, color='dodgerblue')
-        ax.set_title("Top 10 Videos by Comment Count", fontproperties=BANGLA_FONT)
-        ax.set_xlabel("Comment Count")
-        ax.set_yticklabels(top_videos.index, fontproperties=BANGLA_FONT)
-        plt.tight_layout()
+        fig_top_videos, ax = None, None
+        if 'video_title' in comments_df.columns:
+            top_videos = comments_df['video_title'].value_counts().nlargest(10)
+            if not top_videos.empty:
+                fig_top_videos, ax = plt.subplots(figsize=(10, 6))
+                top_videos.plot(kind='barh', ax=ax, color='dodgerblue')
+                ax.set_title("Top 10 Videos by Comment Count", fontproperties=BANGLA_FONT)
+                ax.set_xlabel("Comment Count")
+                ax.set_yticklabels(top_videos.index, fontproperties=BANGLA_FONT)
+                plt.tight_layout()
+                plt.close(fig_top_videos)
 
         # Engagement rate per video
+        fig_engagement, ax = None, None
         if 'video_id' in comments_df.columns and 'video_title' in comments_df.columns:
             engagement_df = comments_df.groupby('video_title').size().to_frame('comment_count')
             if videos_df is not None and not videos_df.empty:
-                merged = videos_df.set_index('video_title').join(engagement_df)
+                merged = videos_df.set_index('video_title').join(engagement_df, lsuffix='_video', rsuffix='_comment')
+                # If 'comment_count' is missing, fill with 0
+                if 'comment_count' not in merged.columns:
+                    merged['comment_count'] = 0
+                # If 'view_count' is missing, fill with 1 to avoid division by zero
+                if 'view_count' not in merged.columns:
+                    merged['view_count'] = 1
                 merged['engagement_rate'] = merged['comment_count'] / merged['view_count']
                 merged = merged.sort_values('engagement_rate', ascending=False).head(10)
-                fig_engagement, ax = plt.subplots(figsize=(10, 6))
-                merged['engagement_rate'].plot(kind='barh', ax=ax, color='mediumseagreen')
-                ax.set_title("Top 10 Videos by Engagement Rate", fontproperties=BANGLA_FONT)
-                ax.set_xlabel("Engagement Rate (Comments / Views)")
-                ax.set_yticklabels(merged.index, fontproperties=BANGLA_FONT)
-                plt.tight_layout()
+                if not merged.empty:
+                    fig_engagement, ax = plt.subplots(figsize=(10, 6))
+                    merged['engagement_rate'].plot(kind='barh', ax=ax, color='mediumseagreen')
+                    ax.set_title("Top 10 Videos by Engagement Rate", fontproperties=BANGLA_FONT)
+                    ax.set_xlabel("Engagement Rate (Comments / Views)")
+                    ax.set_yticklabels(merged.index, fontproperties=BANGLA_FONT)
+                    plt.tight_layout()
+                    plt.close(fig_engagement)
 
         # Comment activity over time
+        fig_time_series, ax = None, None
         if 'published_date_comment' in comments_df.columns:
-            comments_df['published_date_comment'] = pd.to_datetime(comments_df['published_date_comment'])
-            time_series = comments_df.set_index('published_date_comment').resample('D').size()
-            fig_time_series, ax = plt.subplots(figsize=(10, 4))
-            time_series.plot(ax=ax, color='darkorange')
-            ax.set_title("Comment Activity Over Time", fontproperties=BANGLA_FONT)
-            ax.set_xlabel("Date")
-            ax.set_ylabel("Number of Comments")
-            plt.tight_layout()
+            try:
+                comments_df['published_date_comment'] = pd.to_datetime(comments_df['published_date_comment'])
+                time_series = comments_df.set_index('published_date_comment').resample('D').size()
+                if not time_series.empty:
+                    fig_time_series, ax = plt.subplots(figsize=(10, 4))
+                    time_series.plot(ax=ax, color='darkorange')
+                    ax.set_title("Comment Activity Over Time", fontproperties=BANGLA_FONT)
+                    ax.set_xlabel("Date")
+                    ax.set_ylabel("Number of Comments")
+                    plt.tight_layout()
+                    plt.close(fig_time_series)
+            except Exception as e:
+                logger.error(f"Error in comment activity plot: {e}")
 
         # Word cloud (improved: only Bengali words, no sentiment)
-        text = " ".join(comment for comment in comments_df['comment_text'].astype(str))
-        try:
-            tokenizer = get_bangla_tokenizer()
-            if tokenizer:
-                tokens = tokenizer.tokenize(text)
-                words = [w for w in tokens if w not in BANGLA_STOP_WORDS and len(w) > 1 and not w.startswith("▁") and re.match(r'^[\u0980-\u09FF]+$', w)]
-                words = [w.replace("▁", "") for w in words if w.replace("▁", "")]
-                wc_text = " ".join(words)
-            else:
-                wc_text = text
-            wc = WordCloud(font_path=FONT_PATH, width=900, height=450, background_color='white', stopwords=BANGLA_STOP_WORDS, collocations=True, colormap='plasma').generate(wc_text)
-            fig_wc, ax = plt.subplots(figsize=(12, 6)); ax.imshow(wc, interpolation='bilinear'); ax.axis("off"); ax.set_title("Bengali Word Cloud from Comments", fontproperties=BANGLA_FONT)
-        except Exception as e: logger.error(f"YouTube WordCloud failed: {e}")
+        fig_wc, ax = None, None
+        if 'comment_text' in comments_df.columns:
+            text = " ".join(comment for comment in comments_df['comment_text'].astype(str))
+            try:
+                tokenizer = get_bangla_tokenizer()
+                if tokenizer:
+                    tokens = tokenizer.tokenize(text)
+                    words = [w for w in tokens if w not in BANGLA_STOP_WORDS and len(w) > 1 and not w.startswith("▁") and re.match(r'^[\u0980-\u09FF]+$', w)]
+                    words = [w.replace("▁", "") for w in words if w.replace("▁", "")]
+                    wc_text = " ".join(words)
+                else:
+                    wc_text = text
+                wc = WordCloud(font_path=FONT_PATH, width=900, height=450, background_color='white', stopwords=BANGLA_STOP_WORDS, collocations=True, colormap='plasma').generate(wc_text)
+                fig_wc, ax = plt.subplots(figsize=(12, 6)); ax.imshow(wc, interpolation='bilinear'); ax.axis("off"); ax.set_title("Bengali Word Cloud from Comments", fontproperties=BANGLA_FONT)
+                plt.close(fig_wc)
+            except Exception as e:
+                logger.error(f"YouTube WordCloud failed: {e}")
 
     return {
         **kpis,
@@ -510,17 +480,16 @@ def generate_youtube_topic_dashboard(videos_df_full_scan: pd.DataFrame):
     set_plot_style()
     
     channel_views = videos_df_full_scan.groupby('channel')['view_count'].sum().nlargest(15).sort_values()
-    fig_channel_views, ax = plt.subplots(figsize=(10, 7)); channel_views.plot(kind='barh', ax=ax, color='purple'); ax.set_title("Channel Dominance by Total Views (Top 15)", fontproperties=BANGLA_FONT); ax.set_xlabel("Combined Views on Topic"); ax.set_yticklabels(channel_views.index, fontproperties=BANGLA_FONT); plt.tight_layout()
+    fig_channel_views, ax = plt.subplots(figsize=(10, 7)); channel_views.plot(kind='barh', ax=ax, color='purple'); ax.set_title("Channel Dominance by Total Views (Top 15)", fontproperties=BANGLA_FONT); ax.set_xlabel("Combined Views on Topic"); ax.set_yticklabels(channel_views.index, fontproperties=BANGLA_FONT); plt.tight_layout(); plt.close(fig_channel_views)
 
     df_sample = videos_df_full_scan.sample(n=min(len(videos_df_full_scan), 200))
     avg_views, avg_engagement = df_sample['view_count'].median(), df_sample['engagement_rate'].median()
     fig_quadrant, ax = plt.subplots(figsize=(10, 8)); sns.scatterplot(data=df_sample, x='view_count', y='engagement_rate', size='like_count', sizes=(20, 400), hue='channel', alpha=0.7, ax=ax, legend=False)
     ax.set_xscale('log'); ax.set_yscale('log'); ax.set_title("Content Performance Quadrant", fontproperties=BANGLA_FONT); ax.set_xlabel("Video Views (Log Scale)", fontproperties=BANGLA_FONT); ax.set_ylabel("Engagement Rate (Log Scale)", fontproperties=BANGLA_FONT)
-    ax.axhline(avg_engagement, ls='--', color='gray'); ax.axvline(avg_views, ls='--', color='gray'); ax.text(avg_views*1.1, ax.get_ylim()[1], 'High Performers', color='green', fontproperties=BANGLA_FONT); ax.text(ax.get_xlim()[0], avg_engagement*1.1, 'Niche Stars', color='blue', fontproperties=BANGLA_FONT)
+    ax.axhline(avg_engagement, ls='--', color='gray'); ax.axvline(avg_views, ls='--', color='gray'); ax.text(avg_views*1.1, ax.get_ylim()[1], 'High Performers', color='green', fontproperties=BANGLA_FONT); ax.text(ax.get_xlim()[0], avg_engagement*1.1, 'Niche Stars', color='blue', fontproperties=BANGLA_FONT); plt.close(fig_quadrant)
 
     fig_age, ax = plt.subplots(figsize=(10, 7)); sns.scatterplot(data=df_sample, x='published_date', y='view_count', size='engagement_rate', sizes=(20, 400), alpha=0.6, ax=ax)
-    ax.set_yscale('log'); ax.set_title("Content Age vs. Impact", fontproperties=BANGLA_FONT); ax.set_xlabel("Publication Date", fontproperties=BANGLA_FONT); ax.set_ylabel("Views (Log Scale)", fontproperties=BANGLA_FONT); plt.xticks(rotation=45)
-    
+    ax.set_yscale('log'); ax.set_title("Content Age vs. Impact", fontproperties=BANGLA_FONT); ax.set_xlabel("Publication Date", fontproperties=BANGLA_FONT); ax.set_ylabel("Views (Log Scale)", fontproperties=BANGLA_FONT); plt.xticks(rotation=45); plt.close(fig_age)
     return fig_channel_views, fig_quadrant, fig_age
 
 # ==============================================================================
@@ -631,11 +600,22 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
 
     def update_news_dashboards(analyzed_df):
         if analyzed_df is None or analyzed_df.empty:
-            return {scraper_dashboard_group: gr.update(visible=False), sentiment_dashboard_tab: gr.update(visible=False)}
-        
+            return [gr.update(visible=False), '', '', '', None, None, None, gr.update(visible=False), None, None]
         scraper_updates = generate_scraper_dashboard(analyzed_df)
         sentiment_updates = generate_sentiment_dashboard(analyzed_df)
-        return {**scraper_updates, **sentiment_updates}
+        # Return outputs in the exact order of news_ui_components
+        return [
+            scraper_updates.get(scraper_dashboard_group, gr.update(visible=False)),
+            scraper_updates.get(kpi_total_articles, ''),
+            scraper_updates.get(kpi_unique_media, ''),
+            scraper_updates.get(kpi_date_range, ''),
+            scraper_updates.get(dashboard_timeline_plot, None),
+            scraper_updates.get(dashboard_media_plot, None),
+            scraper_updates.get(dashboard_wordcloud_plot, None),
+            sentiment_updates.get(sentiment_dashboard_tab, gr.update(visible=False)),
+            sentiment_updates.get(sentiment_pie_plot, None),
+            sentiment_updates.get(sentiment_by_media_plot, None)
+        ]
 
     news_ui_components = [
         scraper_dashboard_group, kpi_total_articles, kpi_unique_media, kpi_date_range,
@@ -669,26 +649,25 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
 
     def update_youtube_dashboards(results_data):
         if not results_data or results_data.get("full_scan") is None or results_data["full_scan"].empty:
-            return {
-                yt_dashboard_group: gr.update(visible=False), kpi_yt_total_topic_videos: "0",
-                kpi_yt_videos_found: "0", kpi_yt_views_scanned: "0", kpi_yt_comments_scraped: "0",
-                yt_channel_plot: None, yt_wordcloud_plot: None, yt_sentiment_pie_plot: None,
-                yt_sentiment_by_video_plot: None, yt_channel_views_plot: None,
-                yt_performance_quadrant_plot: None, yt_content_age_plot: None
-            }
-        
+            return [gr.update(visible=False), "0", "0", "0", "0", None, None, None, None, None, None, None]
         videos_df_full, comments_df, total_estimate = results_data.get("full_scan"), results_data.get("comments"), results_data.get("total_estimate", 0)
         deep_dive_updates = generate_youtube_dashboard(videos_df_full, comments_df)
         fig_ch_views, fig_quad, fig_age = generate_youtube_topic_dashboard(videos_df_full)
-        
-        return {
-            yt_dashboard_group: gr.update(visible=True),
-            kpi_yt_total_topic_videos: f"{total_estimate:,}",
-            **deep_dive_updates,
-            yt_channel_views_plot: fig_ch_views,
-            yt_performance_quadrant_plot: fig_quad,
-            yt_content_age_plot: fig_age,
-        }
+        # Return outputs in the exact order of yt_ui_components
+        return [
+            gr.update(visible=True),
+            f"{total_estimate:,}",
+            deep_dive_updates.get(kpi_yt_videos_found, "0"),
+            deep_dive_updates.get(kpi_yt_views_scanned, "0"),
+            deep_dive_updates.get(kpi_yt_comments_scraped, "0"),
+            deep_dive_updates.get(yt_channel_plot, None),
+            deep_dive_updates.get(yt_wordcloud_plot, None),
+            deep_dive_updates.get(yt_sentiment_pie_plot, None),
+            deep_dive_updates.get(yt_sentiment_by_video_plot, None),
+            fig_ch_views,
+            fig_quad,
+            fig_age
+        ]
     
     yt_ui_components = [
         yt_dashboard_group, kpi_yt_total_topic_videos, kpi_yt_videos_found, kpi_yt_views_scanned, kpi_yt_comments_scraped,
