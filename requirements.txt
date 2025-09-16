@@ -1,0 +1,25 @@
+# requirements.txt
+gradio
+pandas
+numpy
+torch
+transformers
+accelerate
+bitsandbytes
+scipy
+sentence-transformers
+bertopic[visualization]
+umap-learn
+hdbscan
+scikit-learn
+bnlp-toolkit
+bangla-stemmer
+KeyBERT
+huggingface_hub
+google-api-python-client
+GoogleNews
+requests
+dateparser
+matplotlib
+wordcloud
+seaborn

@@ -1,0 +1,37 @@
+2025-09-16 02:38:51,111 - INFO - Application starting up.
+2025-09-16 02:38:51,112 - INFO - Successfully loaded 'NotoSansBengali-Regular.ttf' font.
+2025-09-16 02:38:52,322 - WARNING - No AUTH_CREDENTIALS found. Using default insecure credentials. Set this as an environment variable for production.
+2025-09-16 02:38:53,494 - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2025-09-16 02:38:54,165 - INFO - HTTP Request: GET http://127.0.0.1:7860/gradio_api/startup-events "HTTP/1.1 200 OK"
+2025-09-16 02:38:54,917 - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2025-09-16 13:00:23,398 - INFO - Application starting up.
+2025-09-16 13:00:23,417 - INFO - Successfully loaded 'NotoSansBengali-Regular.ttf' font.
+2025-09-16 13:00:24,280 - WARNING - No AUTH_CREDENTIALS found. Using default insecure credentials. Set this as an environment variable for production.
+2025-09-16 13:00:25,630 - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2025-09-16 13:00:26,018 - INFO - HTTP Request: GET http://127.0.0.1:7860/gradio_api/startup-events "HTTP/1.1 200 OK"
+2025-09-16 13:00:26,075 - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2025-09-16 13:06:07,026 - INFO - Initializing sentiment-analysis pipeline for model: ahs95/banglabert-sentiment-analysis
+2025-09-16 13:09:20,915 - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-09-16 13:09:33,965 - INFO - YouTube analysis complete. Est. total videos: 1430. Scanned: 250. Comments: 514.
+2025-09-16 13:09:33,967 - INFO - Initializing sentiment-analysis pipeline for model: ahs95/banglabert-sentiment-analysis
+2025-09-16 13:12:21,363 - INFO - Pipeline 'sentiment-analysis' loaded successfully.
+2025-09-16 13:12:21,505 - INFO - Pipeline 'sentiment-analysis' loaded successfully.
+2025-09-16 13:12:39,625 - INFO - Sentiment analysis complete.
+2025-09-16 13:25:58,465 - INFO - Application starting up.
+2025-09-16 13:25:58,794 - INFO - Successfully loaded 'NotoSansBengali-Regular.ttf' font.
+2025-09-16 13:26:00,022 - WARNING - No AUTH_CREDENTIALS found. Using default insecure credentials. Set this as an environment variable for production.
+2025-09-16 13:26:01,568 - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2025-09-16 13:26:02,500 - INFO - HTTP Request: GET http://127.0.0.1:7860/gradio_api/startup-events "HTTP/1.1 200 OK"
+2025-09-16 13:26:03,360 - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2025-09-16 13:27:46,476 - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-09-16 13:27:59,284 - INFO - YouTube analysis complete. Est. total videos: 1436. Scanned: 350. Comments: 497.
+2025-09-16 13:27:59,287 - INFO - Initializing sentiment-analysis pipeline for model: ahs95/banglabert-sentiment-analysis
+2025-09-16 13:28:01,918 - INFO - Pipeline 'sentiment-analysis' loaded successfully.
+2025-09-16 13:29:34,466 - INFO - Sentiment analysis complete.
+2025-09-16 13:30:42,582 - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-09-16 13:30:47,882 - INFO - BanglaBERT tokenizer loaded successfully.
+2025-09-16 13:30:58,695 - INFO - YouTube analysis complete. Est. total videos: 1435. Scanned: 350. Comments: 557.
+2025-09-16 13:32:23,949 - INFO - Sentiment analysis complete.
+2025-09-16 15:31:53,486 - INFO - Application starting up.
+2025-09-16 15:31:53,848 - INFO - Successfully loaded 'NotoSansBengali-Regular.ttf' font.
+2025-09-16 15:31:56,340 - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
