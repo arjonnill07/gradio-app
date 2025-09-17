@@ -556,17 +556,19 @@ def generate_scraper_dashboard(df: pd.DataFrame):
     if not media_counts.empty:
         fig_media, ax = plt.subplots(figsize=(8, 6))
         media_counts.plot(kind='barh', ax=ax, color='skyblue')
-        ax.set_title("Top 15 Media Sources", fontproperties=BANGLA_FONT)
-        ax.set_xlabel("Article Count", fontproperties=BANGLA_FONT)
-        ax.set_ylabel("মিডিয়া", fontproperties=BANGLA_FONT)
+        ax.set_title("Top 15 Media Sources", fontproperties=BANGLA_FONT, fontsize=18)
+        ax.set_xlabel("Article Count", fontproperties=BANGLA_FONT, fontsize=14)
+        ax.set_ylabel("মিডিয়া", fontproperties=BANGLA_FONT, fontsize=14)
         yticks = np.arange(len(media_counts.index))
         ax.set_yticks(yticks)
-        ax.set_yticklabels(media_counts.index, fontproperties=BANGLA_FONT, fontsize=12)
+        ax.set_yticklabels(media_counts.index, fontproperties=BANGLA_FONT, fontsize=14)
         # Ensure all tick labels use Bengali font
         for label in ax.get_xticklabels():
             label.set_fontproperties(BANGLA_FONT)
+            label.set_fontsize(12)
         for label in ax.get_yticklabels():
             label.set_fontproperties(BANGLA_FONT)
+            label.set_fontsize(14)
         plt.tight_layout()
     
     # Word cloud generation
@@ -652,12 +654,18 @@ def generate_youtube_dashboard(videos_df, comments_df):
         if not channel_views.empty:
             fig_channel_dominance, ax = plt.subplots(figsize=(10, 6))
             channel_views.plot(kind='barh', ax=ax, color='slateblue')
-            ax.set_title("Top 10 Dominant Channels by View Count", fontproperties=BANGLA_FONT)
-            ax.set_xlabel("মোট ভিউ", fontproperties=BANGLA_FONT)
-            ax.set_ylabel("চ্যানেল", fontproperties=BANGLA_FONT)
+            ax.set_title("Top 10 Dominant Channels by View Count", fontproperties=BANGLA_FONT, fontsize=18)
+            ax.set_xlabel("মোট ভিউ", fontproperties=BANGLA_FONT, fontsize=14)
+            ax.set_ylabel("চ্যানেল", fontproperties=BANGLA_FONT, fontsize=14)
             yticks = np.arange(len(channel_views.index))
             ax.set_yticks(yticks)
-            ax.set_yticklabels(channel_views.index, fontproperties=BANGLA_FONT, fontsize=12)
+            ax.set_yticklabels(channel_views.index, fontproperties=BANGLA_FONT, fontsize=14)
+            for label in ax.get_xticklabels():
+                label.set_fontproperties(BANGLA_FONT)
+                label.set_fontsize(12)
+            for label in ax.get_yticklabels():
+                label.set_fontproperties(BANGLA_FONT)
+                label.set_fontsize(14)
             plt.tight_layout()
     dashboard_components["yt_channel_dominance_plot"] = fig_channel_dominance
 
@@ -676,9 +684,15 @@ def generate_youtube_dashboard(videos_df, comments_df):
             )
             ax.axvline(median_views, color='blue', linestyle='--', label='Median Views')
             ax.axhline(median_engagement, color='green', linestyle='--', label='Median Engagement')
-            ax.set_xlabel("মোট ভিউ", fontproperties=BANGLA_FONT)
-            ax.set_ylabel("এনগেজমেন্ট রেট", fontproperties=BANGLA_FONT)
-            ax.set_title("Content Performance Quadrant", fontproperties=BANGLA_FONT)
+            ax.set_xlabel("মোট ভিউ", fontproperties=BANGLA_FONT, fontsize=14)
+            ax.set_ylabel("এনগেজমেন্ট রেট", fontproperties=BANGLA_FONT, fontsize=14)
+            ax.set_title("Content Performance Quadrant", fontproperties=BANGLA_FONT, fontsize=18)
+            for label in ax.get_xticklabels():
+                label.set_fontproperties(BANGLA_FONT)
+                label.set_fontsize(12)
+            for label in ax.get_yticklabels():
+                label.set_fontproperties(BANGLA_FONT)
+                label.set_fontsize(14)
             plt.tight_layout()
         except Exception as e:
             logger.error(f"Quadrant plot failed: {e}")
@@ -720,9 +734,15 @@ def generate_youtube_dashboard(videos_df, comments_df):
         if not channel_counts.empty:
             fig_channels, ax = plt.subplots(figsize=(8, 6))
             channel_counts.plot(kind='barh', ax=ax, color='coral')
-            ax.set_title("Top 15 Channels by Video Volume", fontproperties=BANGLA_FONT)
-            ax.set_yticklabels(channel_counts.index, fontproperties=BANGLA_FONT)
-            ax.set_xlabel("Video Count", fontproperties=BANGLA_FONT)
+            ax.set_title("Top 15 Channels by Video Volume", fontproperties=BANGLA_FONT, fontsize=18)
+            ax.set_yticklabels(channel_counts.index, fontproperties=BANGLA_FONT, fontsize=14)
+            ax.set_xlabel("Video Count", fontproperties=BANGLA_FONT, fontsize=14)
+            for label in ax.get_xticklabels():
+                label.set_fontproperties(BANGLA_FONT)
+                label.set_fontsize(12)
+            for label in ax.get_yticklabels():
+                label.set_fontproperties(BANGLA_FONT)
+                label.set_fontsize(14)
             plt.tight_layout()
     dashboard_components["yt_channel_plot"] = fig_channels
     
@@ -783,12 +803,18 @@ def generate_youtube_dashboard(videos_df, comments_df):
         if not top_videos.empty:
             fig_top_videos, ax = plt.subplots(figsize=(10, 6))
             top_videos.plot(kind='barh', ax=ax, color='dodgerblue')
-            ax.set_title("Top 10 Videos by Comment Count", fontproperties=BANGLA_FONT)
-            ax.set_xlabel("মন্তব্য সংখ্যা", fontproperties=BANGLA_FONT)
-            ax.set_ylabel("ভিডিও শিরোনাম", fontproperties=BANGLA_FONT)
+            ax.set_title("Top 10 Videos by Comment Count", fontproperties=BANGLA_FONT, fontsize=18)
+            ax.set_xlabel("মন্তব্য সংখ্যা", fontproperties=BANGLA_FONT, fontsize=14)
+            ax.set_ylabel("ভিডিও শিরোনাম", fontproperties=BANGLA_FONT, fontsize=14)
             yticks = np.arange(len(top_videos.index))
             ax.set_yticks(yticks)
-            ax.set_yticklabels(top_videos.index, fontproperties=BANGLA_FONT, fontsize=12)
+            ax.set_yticklabels(top_videos.index, fontproperties=BANGLA_FONT, fontsize=14)
+            for label in ax.get_xticklabels():
+                label.set_fontproperties(BANGLA_FONT)
+                label.set_fontsize(12)
+            for label in ax.get_yticklabels():
+                label.set_fontproperties(BANGLA_FONT)
+                label.set_fontsize(14)
             plt.tight_layout()
     dashboard_components["yt_top_videos_plot"] = fig_top_videos
     
@@ -812,12 +838,18 @@ def generate_youtube_dashboard(videos_df, comments_df):
                 if not top_engagement.empty:
                     fig_engagement, ax = plt.subplots(figsize=(10, 6))
                     ax.barh(top_engagement['video_title'], top_engagement['engagement_rate'], color='mediumseagreen')
-                    ax.set_title("Top 10 Videos by Engagement Rate", fontproperties=BANGLA_FONT)
-                    ax.set_xlabel("এনগেজমেন্ট রেট (মন্তব্য/ভিউ)", fontproperties=BANGLA_FONT)
-                    ax.set_ylabel("ভিডিও শিরোনাম", fontproperties=BANGLA_FONT)
+                    ax.set_title("Top 10 Videos by Engagement Rate", fontproperties=BANGLA_FONT, fontsize=18)
+                    ax.set_xlabel("এনগেজমেন্ট রেট (মন্তব্য/ভিউ)", fontproperties=BANGLA_FONT, fontsize=14)
+                    ax.set_ylabel("ভিডিও শিরোনাম", fontproperties=BANGLA_FONT, fontsize=14)
                     yticks = np.arange(len(top_engagement['video_title']))
                     ax.set_yticks(yticks)
-                    ax.set_yticklabels(top_engagement['video_title'], fontproperties=BANGLA_FONT, fontsize=12)
+                    ax.set_yticklabels(top_engagement['video_title'], fontproperties=BANGLA_FONT, fontsize=14)
+                    for label in ax.get_xticklabels():
+                        label.set_fontproperties(BANGLA_FONT)
+                        label.set_fontsize(12)
+                    for label in ax.get_yticklabels():
+                        label.set_fontproperties(BANGLA_FONT)
+                        label.set_fontsize(14)
                     plt.tight_layout()
             except Exception as e:
                 logger.error(f"Engagement rate calculation failed: {e}")
@@ -1269,9 +1301,10 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
 
     with gr.Tabs():
         with gr.TabItem("1. News Scraper", id=0):
+            gr.HTML("<div class='gr-card' style='margin-bottom:24px;'><h2>News Scraper</h2><p>Search and filter news articles from top Bangladeshi sources. Use advanced filters and download results.</p></div>")
             with gr.Row():
                 with gr.Column(scale=1):
-                    gr.Markdown("### Search Criteria")
+                    gr.HTML("<div class='gr-card'><h3>Search Criteria</h3></div>")
                     search_keywords_textbox = gr.Textbox(
                         label="Search Keywords", 
                         placeholder="e.g., বিএনপি সমাবেশ", 
@@ -1292,7 +1325,7 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
                         placeholder="YYYY-MM-DD or 'today'", 
                         info="End date for news scraping."
                     )
-                    gr.Markdown("### Scraping Parameters")
+                    gr.HTML("<div class='gr-card'><h3>Scraping Parameters</h3></div>")
                     interval_days_slider = gr.Slider(
                         1, 7, 3, step=1, 
                         label="Days per Interval", 
@@ -1311,6 +1344,7 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
                     start_scraper_button = gr.Button("Start Scraping & Analysis", variant="primary")
                     scraper_progress = gr.Progress()
                 with gr.Column(scale=2):
+                    gr.HTML("<div class='gr-card'><h3>Filtered Results</h3></div>")
                     scraper_results_df = gr.DataFrame(
                         label="Filtered Results", 
                         interactive=True
@@ -1319,36 +1353,34 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
                         label="Download Filtered Results CSV"
                     )
         with gr.TabItem("2. News Analytics", id=1):
-            gr.Markdown("### News Analytics Dashboard")
-            with gr.Group():
-                news_summary_card = gr.HTML(
-                    "<div style='background:#f5f5f5;padding:16px;border-radius:12px;margin-bottom:12px;box-shadow:0 2px 8px #eee;'>"
-                    "<h3 style='margin:0 0 8px 0;'>Key Findings</h3>"
-                    "<ul style='margin:0;padding-left:18px;'>"
-                    "<li><b>Total Articles:</b> <span id='news_total_articles'></span></li>"
-                    "<li><b>Unique Media:</b> <span id='news_unique_media'></span></li>"
-                    "<li><b>Date Range:</b> <span id='news_date_range'></span></li>"
-                    "</ul></div>"
-                )
-                kpi_total_articles = gr.HTML()
-                kpi_unique_media = gr.HTML()
-                kpi_date_range = gr.HTML()
-                with gr.Row():
-                    with gr.Column():
-                        dashboard_timeline_plot = gr.LinePlot(
-                            label="News Volume Timeline"
-                        )
-                    with gr.Column():
-                        dashboard_media_plot = gr.Plot(
-                            label="Top Media Sources by Article Count"
-                        )
-                dashboard_wordcloud_plot = gr.Plot(
-                    label="Headline Word Cloud"
-                )
-        with gr.TabItem("3. YouTube Topic Analysis", id=2):
-            gr.Markdown("## YouTube Topic Analysis")
+            gr.HTML("<div class='gr-card' style='margin-bottom:24px;'><h2>News Analytics Dashboard</h2><p>Visualize key metrics, trends, and top sources from scraped news data. All plots and metrics update dynamically.</p></div>")
             with gr.Row():
                 with gr.Column(scale=1):
+                    gr.HTML("<div class='gr-card'><h3>Key Metrics</h3></div>")
+                    kpi_total_articles = gr.HTML()
+                    kpi_unique_media = gr.HTML()
+                    kpi_date_range = gr.HTML()
+                with gr.Column(scale=2):
+                    gr.HTML("<div class='gr-card'><h3>Trends</h3></div>")
+                    dashboard_timeline_plot = gr.LinePlot(
+                        label="News Volume Timeline"
+                    )
+            with gr.Row():
+                with gr.Column(scale=1):
+                    gr.HTML("<div class='gr-card'><h3>Top Sources</h3></div>")
+                    dashboard_media_plot = gr.Plot(
+                        label="Top Media Sources by Article Count"
+                    )
+                with gr.Column(scale=1):
+                    gr.HTML("<div class='gr-card'><h3>Headline Word Cloud</h3></div>")
+                    dashboard_wordcloud_plot = gr.Plot(
+                        label="Headline Word Cloud"
+                    )
+        with gr.TabItem("3. YouTube Topic Analysis", id=2):
+            gr.HTML("<div class='gr-card' style='margin-bottom:24px;'><h2>YouTube Topic Analysis</h2><p>Analyze YouTube video trends, engagement, and comment activity for your search topics.</p></div>")
+            with gr.Row():
+                with gr.Column(scale=1):
+                    gr.HTML("<div class='gr-card'><h3>Search Criteria</h3></div>")
                     yt_search_keywords = gr.Textbox(
                         label="YouTube Search Keywords", 
                         placeholder="e.g., BNP Rally", 
@@ -1380,6 +1412,7 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
                     )
                     yt_progress = gr.Progress()
                 with gr.Column(scale=2):
+                    gr.HTML("<div class='gr-card'><h3>Video Results</h3></div>")
                     yt_results_df = gr.DataFrame(
                         label="YouTube Video Results", 
                         interactive=True
@@ -1395,38 +1428,36 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
                         label="Download YouTube Comments CSV"
                     )
                     yt_dashboard_html = gr.HTML()
-                    with gr.Group():
-                        kpi_yt_videos_found = gr.HTML()
-                        kpi_yt_views_scanned = gr.HTML()
-                        kpi_yt_comments_scraped = gr.HTML()
-                        with gr.Row():
-                            with gr.Column():
-                                yt_channel_plot = gr.Plot(
-                                    label="Top Channels by Video Volume"
-                                )
-                                yt_channel_dominance_plot = gr.Plot(
-                                    label="Channel Dominance by View Count"
-                                )
-                            with gr.Column():
-                                yt_time_series_plot = gr.LinePlot(
-                                    label="Comment Activity Over Time"
-                                )
-                        with gr.Row():
-                            with gr.Column():
-                                yt_top_videos_plot = gr.Plot(
-                                    label="Top Videos by Comment Count"
-                                )
-                                yt_content_quadrant_plot = gr.Plot(
-                                    label="Content Performance Quadrant"
-                                )
-                            with gr.Column():
-                                yt_engagement_plot = gr.Plot(
-                                    label="Top Videos by Engagement Rate"
-                                )
-                        yt_wordcloud_plot = gr.Plot(
-                            label="Bengali Word Cloud from Comments"
-                        )
-                        yt_detailed_summary = gr.HTML()
+            with gr.Row():
+                with gr.Column(scale=1):
+                    gr.HTML("<div class='gr-card'><h3>Top Channels & Engagement</h3></div>")
+                    kpi_yt_videos_found = gr.HTML()
+                    kpi_yt_views_scanned = gr.HTML()
+                    kpi_yt_comments_scraped = gr.HTML()
+                    yt_channel_plot = gr.Plot(
+                        label="Top Channels by Video Volume"
+                    )
+                    yt_channel_dominance_plot = gr.Plot(
+                        label="Channel Dominance by View Count"
+                    )
+                    yt_top_videos_plot = gr.Plot(
+                        label="Top Videos by Comment Count"
+                    )
+                    yt_content_quadrant_plot = gr.Plot(
+                        label="Content Performance Quadrant"
+                    )
+                    yt_engagement_plot = gr.Plot(
+                        label="Top Videos by Engagement Rate"
+                    )
+                with gr.Column(scale=1):
+                    gr.HTML("<div class='gr-card'><h3>Comment Activity & Word Cloud</h3></div>")
+                    yt_time_series_plot = gr.LinePlot(
+                        label="Comment Activity Over Time"
+                    )
+                    yt_wordcloud_plot = gr.Plot(
+                        label="Bengali Word Cloud from Comments"
+                    )
+                    yt_detailed_summary = gr.HTML()
     # --- EVENT HANDLERS ---
     def scraper_button_handler(search_keywords, sites, start_date, end_date, interval, max_pages, filter_keys):
         """Handle news scraper button click event."""
