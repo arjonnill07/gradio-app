@@ -562,13 +562,16 @@ def generate_scraper_dashboard(df: pd.DataFrame):
         yticks = np.arange(len(media_counts.index))
         ax.set_yticks(yticks)
         ax.set_yticklabels(media_counts.index, fontproperties=BANGLA_FONT, fontsize=14)
-        # Ensure all tick labels use Bengali font
         for label in ax.get_xticklabels():
             label.set_fontproperties(BANGLA_FONT)
             label.set_fontsize(12)
         for label in ax.get_yticklabels():
             label.set_fontproperties(BANGLA_FONT)
             label.set_fontsize(14)
+        legend = ax.get_legend()
+        if legend:
+            for text in legend.get_texts():
+                text.set_fontproperties(BANGLA_FONT)
         plt.tight_layout()
     
     # Word cloud generation
@@ -666,6 +669,10 @@ def generate_youtube_dashboard(videos_df, comments_df):
             for label in ax.get_yticklabels():
                 label.set_fontproperties(BANGLA_FONT)
                 label.set_fontsize(14)
+            legend = ax.get_legend()
+            if legend:
+                for text in legend.get_texts():
+                    text.set_fontproperties(BANGLA_FONT)
             plt.tight_layout()
     dashboard_components["yt_channel_dominance_plot"] = fig_channel_dominance
 
@@ -693,6 +700,10 @@ def generate_youtube_dashboard(videos_df, comments_df):
             for label in ax.get_yticklabels():
                 label.set_fontproperties(BANGLA_FONT)
                 label.set_fontsize(14)
+            legend = ax.get_legend()
+            if legend:
+                for text in legend.get_texts():
+                    text.set_fontproperties(BANGLA_FONT)
             plt.tight_layout()
         except Exception as e:
             logger.error(f"Quadrant plot failed: {e}")
@@ -743,6 +754,10 @@ def generate_youtube_dashboard(videos_df, comments_df):
             for label in ax.get_yticklabels():
                 label.set_fontproperties(BANGLA_FONT)
                 label.set_fontsize(14)
+            legend = ax.get_legend()
+            if legend:
+                for text in legend.get_texts():
+                    text.set_fontproperties(BANGLA_FONT)
             plt.tight_layout()
     dashboard_components["yt_channel_plot"] = fig_channels
     
@@ -815,6 +830,10 @@ def generate_youtube_dashboard(videos_df, comments_df):
             for label in ax.get_yticklabels():
                 label.set_fontproperties(BANGLA_FONT)
                 label.set_fontsize(14)
+            legend = ax.get_legend()
+            if legend:
+                for text in legend.get_texts():
+                    text.set_fontproperties(BANGLA_FONT)
             plt.tight_layout()
     dashboard_components["yt_top_videos_plot"] = fig_top_videos
     
@@ -850,6 +869,10 @@ def generate_youtube_dashboard(videos_df, comments_df):
                     for label in ax.get_yticklabels():
                         label.set_fontproperties(BANGLA_FONT)
                         label.set_fontsize(14)
+                    legend = ax.get_legend()
+                    if legend:
+                        for text in legend.get_texts():
+                            text.set_fontproperties(BANGLA_FONT)
                     plt.tight_layout()
             except Exception as e:
                 logger.error(f"Engagement rate calculation failed: {e}")
