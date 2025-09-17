@@ -1,4 +1,4 @@
-# Social Perception Analyzer
+# Prohori (প্রহরী)
 
 A powerful web application for scraping, analyzing, and visualizing data from Google News and YouTube. This tool provides deep insights into media trends, public discourse, and content performance with a specialized focus on Bengali-language analytics.
 
