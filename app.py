@@ -629,6 +629,22 @@ def generate_scraper_dashboard(df: pd.DataFrame):
     }
 
 def generate_youtube_dashboard(videos_df, comments_df):
+    """Generate comprehensive dashboard from YouTube analysis results."""
+    # Initialize all dashboard components FIRST
+    dashboard_components = {
+        "kpi_yt_videos_found": gr.HTML(""),
+        "kpi_yt_views_scanned": gr.HTML(""),
+        "kpi_yt_comments_scraped": gr.HTML(""),
+        "yt_channel_plot": None,
+        "yt_channel_dominance_plot": None,
+        "yt_time_series_plot": None,
+        "yt_top_videos_plot": None,
+        "yt_content_quadrant_plot": None,
+        "yt_engagement_plot": None,
+        "yt_wordcloud_plot": None,
+        "yt_detailed_summary": gr.HTML("")
+    }
+
     # Channel dominance by view
     fig_channel_dominance = None
     if videos_df is not None and not videos_df.empty and 'channel' in videos_df.columns:
@@ -682,18 +698,6 @@ def generate_youtube_dashboard(videos_df, comments_df):
         detailed_summary += f"<b>Engagement Rate:</b> {top_video['engagement_rate']:.2f}"
         detailed_summary += "</div>"
     dashboard_components["yt_detailed_summary"] = gr.HTML(detailed_summary)
-    """Generate comprehensive dashboard from YouTube analysis results."""
-    # Initialize all dashboard components
-    dashboard_components = {
-        "kpi_yt_videos_found": gr.HTML(""),
-        "kpi_yt_views_scanned": gr.HTML(""),
-        "kpi_yt_comments_scraped": gr.HTML(""),
-        "yt_channel_plot": None,
-        "yt_wordcloud_plot": None,
-        "yt_top_videos_plot": None,
-        "yt_engagement_plot": None,
-        "yt_time_series_plot": None
-    }
     
     # Generate KPIs if data exists
     if videos_df is not None and not videos_df.empty:
@@ -982,18 +986,21 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
                         label="YouTube Video Results", 
                         interactive=True
                     )
+                    yt_videos_download_file = gr.File(
+                        label="Download YouTube Video Results CSV"
+                    )
                     yt_comments_df = gr.DataFrame(
                         label="YouTube Comments Results", 
                         interactive=True
                     )
-                    
+                    yt_comments_download_file = gr.File(
+                        label="Download YouTube Comments CSV"
+                    )
                     yt_dashboard_html = gr.HTML()
-                    
                     with gr.Group():
                         kpi_yt_videos_found = gr.HTML()
                         kpi_yt_views_scanned = gr.HTML()
                         kpi_yt_comments_scraped = gr.HTML()
-                        
                         with gr.Row():
                             with gr.Column():
                                 yt_channel_plot = gr.Plot(
@@ -1038,7 +1045,7 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
             # Generate dashboard visualizations
             dashboard = generate_scraper_dashboard(df)
             
-            # Prepare download file
+            # Prepare download file for news results
             if not df.empty:
                 csv_path = "news_results.csv"
                 df.to_csv(csv_path, index=False)
@@ -1095,59 +1102,76 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
         try:
             videos_df, comments_df, summary_html = run_youtube_analysis_pipeline(
                 api_key=None,
-                dashboard = {
-                    "kpi_yt_videos_found": gr.HTML("") ,
-                    "kpi_yt_views_scanned": gr.HTML("") ,
-                    "kpi_yt_comments_scraped": gr.HTML("") ,
-                    "yt_channel_plot": None,
-                    "yt_channel_dominance_plot": None,
-                    "yt_time_series_plot": None,
-                    "yt_top_videos_plot": None,
-                    "yt_content_quadrant_plot": None,
-                    "yt_engagement_plot": None,
-                    "yt_wordcloud_plot": None,
-                    "yt_detailed_summary": gr.HTML("")
-                }
-                try:
-                    videos_df, comments_df, summary_html = run_youtube_analysis_pipeline(
-                        api_key=None,
-                        query=keywords,
-                        max_videos_for_stats=max_videos,
-                        num_videos_for_comments=num_comments_videos,
-                        max_comments_per_video=max_comments,
-                        published_after=published_after
-                    )
-                    # Update the state with the results
-                    youtube_results_state = (videos_df, comments_df)
-                    # Generate dashboard visualizations
-                    dashboard = generate_youtube_dashboard(videos_df, comments_df)
-                    return (
-                        videos_df,
-                        comments_df,
-                        summary_html,
-                        dashboard["kpi_yt_videos_found"],
-                        dashboard["kpi_yt_views_scanned"],
-                        dashboard["kpi_yt_comments_scraped"],
-                        dashboard["yt_channel_plot"],
-                        dashboard["yt_channel_dominance_plot"],
-                        dashboard["yt_time_series_plot"],
-                        dashboard["yt_top_videos_plot"],
-                        dashboard["yt_content_quadrant_plot"],
-                        dashboard["yt_engagement_plot"],
-                        dashboard["yt_wordcloud_plot"],
-                        dashboard["yt_detailed_summary"]
-                    )
-                except Exception as e:
-                    logger.error(f"Error in YouTube button handler: {str(e)}")
-                    gr.Error(f"An error occurred during YouTube analysis: {str(e)}")
-                    # Return empty values to reset the UI
-                    return (
-                        pd.DataFrame(),
-                        pd.DataFrame(),
-                        gr.HTML(""),
-                        gr.HTML(""), gr.HTML(""), gr.HTML(""),
-                        None, None, None, None, None, None, None, gr.HTML("")
-                    )
+                query=keywords,
+                max_videos_for_stats=max_videos,
+                num_videos_for_comments=num_comments_videos,
+                max_comments_per_video=max_comments,
+                published_after=published_after
+            )
+            # Update the state with the results
+            youtube_results_state = (videos_df, comments_df)
+            # Prepare download files for YouTube results
+            yt_videos_csv = "youtube_videos.csv"
+            yt_comments_csv = "youtube_comments.csv"
+            if not videos_df.empty:
+                videos_df.to_csv(yt_videos_csv, index=False)
+                yt_videos_download_file = gr.File(value=yt_videos_csv, visible=True)
+            else:
+                yt_videos_download_file = gr.File(visible=False)
+            # For comments, add video title and channel if not present
+            if not comments_df.empty:
+                if "video_title" not in comments_df.columns and "video_id" in comments_df.columns:
+                    # Map video title from videos_df
+                    title_map = videos_df.set_index("video_id")["video_title"].to_dict()
+                    comments_df["video_title"] = comments_df["video_id"].map(title_map)
+                if "channel" not in comments_df.columns and "channel_title" in comments_df.columns:
+                    comments_df["channel"] = comments_df["channel_title"]
+                comments_df.to_csv(yt_comments_csv, index=False)
+                yt_comments_download_file = gr.File(value=yt_comments_csv, visible=True)
+            else:
+                yt_comments_download_file = gr.File(visible=False)
+            # Generate dashboard visualizations
+            dashboard = generate_youtube_dashboard(videos_df, comments_df)
+            return (
+                videos_df,
+                yt_videos_download_file,
+                comments_df,
+                yt_comments_download_file,
+                summary_html,
+                dashboard["kpi_yt_videos_found"],
+                dashboard["kpi_yt_views_scanned"],
+                dashboard["kpi_yt_comments_scraped"],
+                dashboard["yt_channel_plot"],
+                dashboard["yt_channel_dominance_plot"],
+                dashboard["yt_time_series_plot"],
+                dashboard["yt_top_videos_plot"],
+                dashboard["yt_content_quadrant_plot"],
+                dashboard["yt_engagement_plot"],
+                dashboard["yt_wordcloud_plot"],
+                dashboard["yt_detailed_summary"]
+            )
+        except Exception as e:
+            logger.error(f"Error in YouTube button handler: {str(e)}")
+            gr.Error(f"An error occurred during YouTube analysis: {str(e)}")
+            # Return empty values to reset the UI (16 outputs)
+            return (
+                pd.DataFrame(),                # yt_results_df
+                gr.File(visible=False),         # yt_videos_download_file
+                pd.DataFrame(),                # yt_comments_df
+                gr.File(visible=False),         # yt_comments_download_file
+                gr.HTML(""),                   # yt_dashboard_html
+                gr.HTML(""),                   # kpi_yt_videos_found
+                gr.HTML(""),                   # kpi_yt_views_scanned
+                gr.HTML(""),                   # kpi_yt_comments_scraped
+                None,                          # yt_channel_plot
+                None,                          # yt_channel_dominance_plot
+                None,                          # yt_time_series_plot
+                None,                          # yt_top_videos_plot
+                None,                          # yt_content_quadrant_plot
+                None,                          # yt_engagement_plot
+                None,                          # yt_wordcloud_plot
+                gr.HTML("")                    # yt_detailed_summary
+            )
     
     start_youtube_analysis_button.click(
         fn=youtube_button_handler,
@@ -1160,7 +1184,9 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
         ],
         outputs=[
             yt_results_df,
+            yt_videos_download_file,
             yt_comments_df,
+            yt_comments_download_file,
             yt_dashboard_html,
             kpi_yt_videos_found,
             kpi_yt_views_scanned,
