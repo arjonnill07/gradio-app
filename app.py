@@ -1205,5 +1205,384 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
 # ==============================================================================
 # LAUNCH THE APP
 # ==============================================================================
-if __name__ == "__main__":
-    app.launch( debug=True,share=True)
+custom_css = """
+body, .gradio-container {
+    background: #181a20 !important;
+    font-family: 'Inter', 'Noto Sans', sans-serif;
+}
+.gr-card {
+    background: #23263a;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+.gr-title {
+    color: #fff;
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+.gr-metric {
+    color: #22d3ee;
+    font-size: 2.5rem;
+    font-weight: 800;
+}
+.gr-label {
+    color: #94a3b8;
+    font-size: 1.1rem;
+    margin-bottom: 6px;
+}
+.gradio-row, .gradio-column {
+    background: transparent !important;
+}
+.gradio-button {
+    border-radius: 8px !important;
+    background: linear-gradient(90deg,#3b82f6,#22d3ee) !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(34,211,238,0.08);
+    transition: background 0.2s;
+}
+.gradio-button:hover {
+    background: linear-gradient(90deg,#22d3ee,#3b82f6) !important;
+}
+.gradio-markdown h1, .gradio-markdown h2, .gradio-markdown h3 {
+    color: #fff !important;
+}
+.gradio-markdown {
+    color: #cbd5e1 !important;
+}
+"""
+
+with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"), title=APP_TITLE, css=custom_css) as app:
+    gr.HTML("""
+    <div class='gr-card' style='margin-bottom:32px;'>
+        <div class='gr-title'>Social Perception Analyzer</div>
+        <div style='color:#94a3b8;font-size:1.2rem;margin-bottom:8px;'>Prepared for the Policymakers of Bangladesh Nationalist Party (BNP)</div>
+        <div style='color:#22d3ee;font-size:1rem;'>Developed by CDSR</div>
+    </div>
+    """)
+    # --- STATE MANAGEMENT ---
+    scraper_results_state = gr.State()
+    youtube_results_state = gr.State()
+
+    with gr.Tabs():
+        with gr.TabItem("1. News Scraper", id=0):
+            with gr.Row():
+                with gr.Column(scale=1):
+                    gr.Markdown("### Search Criteria")
+                    search_keywords_textbox = gr.Textbox(
+                        label="Search Keywords", 
+                        placeholder="e.g., বিএনপি সমাবেশ", 
+                        info="Keywords to search for in news articles."
+                    )
+                    sites_to_search_textbox = gr.Textbox(
+                        label="Target Sites (Optional, comma-separated)", 
+                        placeholder="e.g., prothomalo.com", 
+                        info="Limit search to specific news sites."
+                    )
+                    start_date_textbox = gr.Textbox(
+                        label="Start Date", 
+                        placeholder="YYYY-MM-DD or 'last week'", 
+                        info="Start date for news scraping."
+                    )
+                    end_date_textbox = gr.Textbox(
+                        label="End Date", 
+                        placeholder="YYYY-MM-DD or 'today'", 
+                        info="End date for news scraping."
+                    )
+                    gr.Markdown("### Scraping Parameters")
+                    interval_days_slider = gr.Slider(
+                        1, 7, 3, step=1, 
+                        label="Days per Interval", 
+                        info="How many days to group each scraping interval."
+                    )
+                    max_pages_slider = gr.Slider(
+                        1, 10, 5, step=1, 
+                        label="Max Pages per Interval", 
+                        info="Maximum number of pages to fetch per interval."
+                    )
+                    filter_keywords_textbox = gr.Textbox(
+                        label="Filter Keywords (comma-separated, optional)", 
+                        placeholder="e.g., নির্বাচন, সরকার", 
+                        info="Filter results by these keywords."
+                    )
+                    start_scraper_button = gr.Button("Start Scraping & Analysis", variant="primary")
+                    scraper_progress = gr.Progress()
+                with gr.Column(scale=2):
+                    scraper_results_df = gr.DataFrame(
+                        label="Filtered Results", 
+                        interactive=True
+                    )
+                    scraper_download_file = gr.File(
+                        label="Download Filtered Results CSV"
+                    )
+        with gr.TabItem("2. News Analytics", id=1):
+            gr.Markdown("### News Analytics Dashboard")
+            with gr.Group():
+                news_summary_card = gr.HTML(
+                    "<div style='background:#f5f5f5;padding:16px;border-radius:12px;margin-bottom:12px;box-shadow:0 2px 8px #eee;'>"
+                    "<h3 style='margin:0 0 8px 0;'>Key Findings</h3>"
+                    "<ul style='margin:0;padding-left:18px;'>"
+                    "<li><b>Total Articles:</b> <span id='news_total_articles'></span></li>"
+                    "<li><b>Unique Media:</b> <span id='news_unique_media'></span></li>"
+                    "<li><b>Date Range:</b> <span id='news_date_range'></span></li>"
+                    "</ul></div>"
+                )
+                kpi_total_articles = gr.HTML()
+                kpi_unique_media = gr.HTML()
+                kpi_date_range = gr.HTML()
+                with gr.Row():
+                    with gr.Column():
+                        dashboard_timeline_plot = gr.LinePlot(
+                            label="News Volume Timeline"
+                        )
+                    with gr.Column():
+                        dashboard_media_plot = gr.Plot(
+                            label="Top Media Sources by Article Count"
+                        )
+                dashboard_wordcloud_plot = gr.Plot(
+                    label="Headline Word Cloud"
+                )
+        with gr.TabItem("3. YouTube Topic Analysis", id=2):
+            gr.Markdown("## YouTube Topic Analysis")
+            with gr.Row():
+                with gr.Column(scale=1):
+                    yt_search_keywords = gr.Textbox(
+                        label="YouTube Search Keywords", 
+                        placeholder="e.g., BNP Rally", 
+                        info="Keywords to search for in YouTube videos."
+                    )
+                    yt_max_videos_slider = gr.Slider(
+                        10, 100, 30, step=5, 
+                        label="Max Videos for Stats", 
+                        info="Maximum number of videos to scan for statistics."
+                    )
+                    yt_num_videos_comments_slider = gr.Slider(
+                        1, 20, 5, step=1, 
+                        label="Videos for Comments", 
+                        info="Number of top videos to scrape comments from."
+                    )
+                    yt_max_comments_slider = gr.Slider(
+                        10, 200, 50, step=10, 
+                        label="Max Comments per Video", 
+                        info="Maximum number of comments to fetch per video."
+                    )
+                    yt_published_after = gr.Textbox(
+                        label="Published After (Optional)", 
+                        placeholder="YYYY-MM-DD", 
+                        info="Only include videos published after this date."
+                    )
+                    start_youtube_analysis_button = gr.Button(
+                        "Start YouTube Analysis", 
+                        variant="primary"
+                    )
+                    yt_progress = gr.Progress()
+                with gr.Column(scale=2):
+                    yt_results_df = gr.DataFrame(
+                        label="YouTube Video Results", 
+                        interactive=True
+                    )
+                    yt_videos_download_file = gr.File(
+                        label="Download YouTube Video Results CSV"
+                    )
+                    yt_comments_df = gr.DataFrame(
+                        label="YouTube Comments Results", 
+                        interactive=True
+                    )
+                    yt_comments_download_file = gr.File(
+                        label="Download YouTube Comments CSV"
+                    )
+                    yt_dashboard_html = gr.HTML()
+                    with gr.Group():
+                        kpi_yt_videos_found = gr.HTML()
+                        kpi_yt_views_scanned = gr.HTML()
+                        kpi_yt_comments_scraped = gr.HTML()
+                        with gr.Row():
+                            with gr.Column():
+                                yt_channel_plot = gr.Plot(
+                                    label="Top Channels by Video Volume"
+                                )
+                                yt_channel_dominance_plot = gr.Plot(
+                                    label="Channel Dominance by View Count"
+                                )
+                            with gr.Column():
+                                yt_time_series_plot = gr.LinePlot(
+                                    label="Comment Activity Over Time"
+                                )
+                        with gr.Row():
+                            with gr.Column():
+                                yt_top_videos_plot = gr.Plot(
+                                    label="Top Videos by Comment Count"
+                                )
+                                yt_content_quadrant_plot = gr.Plot(
+                                    label="Content Performance Quadrant"
+                                )
+                            with gr.Column():
+                                yt_engagement_plot = gr.Plot(
+                                    label="Top Videos by Engagement Rate"
+                                )
+                        yt_wordcloud_plot = gr.Plot(
+                            label="Bengali Word Cloud from Comments"
+                        )
+                        yt_detailed_summary = gr.HTML()
+    # --- EVENT HANDLERS ---
+    def scraper_button_handler(search_keywords, sites, start_date, end_date, interval, max_pages, filter_keys):
+        """Handle news scraper button click event."""
+        try:
+            df, filtered_df = run_news_scraper_pipeline(
+                search_keywords, sites, start_date, end_date, 
+                interval, max_pages, filter_keys
+            )
+            scraper_results_state = df
+            dashboard = generate_scraper_dashboard(df)
+            if not df.empty:
+                csv_path = "news_results.csv"
+                df.to_csv(csv_path, index=False)
+                scraper_download_file = gr.File(value=csv_path, visible=True)
+            else:
+                scraper_download_file = gr.File(visible=False)
+            return (
+                filtered_df,
+                scraper_download_file,
+                dashboard["kpi_total_articles"],
+                dashboard["kpi_unique_media"],
+                dashboard["kpi_date_range"],
+                dashboard["dashboard_timeline_plot"],
+                dashboard["dashboard_media_plot"],
+                dashboard["dashboard_wordcloud_plot"]
+            )
+        except Exception as e:
+            logger.error(f"Error in scraper button handler: {str(e)}")
+            gr.Error(f"An error occurred during scraping: {str(e)}")
+            return (
+                pd.DataFrame(), 
+                gr.File(visible=False),
+                gr.HTML(""), gr.HTML(""), gr.HTML(""),
+                None, None, None
+            )
+
+    start_scraper_button.click(
+        fn=scraper_button_handler,
+        inputs=[
+            search_keywords_textbox, 
+            sites_to_search_textbox, 
+            start_date_textbox, 
+            end_date_textbox, 
+            interval_days_slider, 
+            max_pages_slider, 
+            filter_keywords_textbox
+        ],
+        outputs=[
+            scraper_results_df,
+            scraper_download_file,
+            kpi_total_articles,
+            kpi_unique_media,
+            kpi_date_range,
+            dashboard_timeline_plot,
+            dashboard_media_plot,
+            dashboard_wordcloud_plot
+        ]
+    )
+
+    def youtube_button_handler(keywords, max_videos, num_comments_videos, max_comments, published_after):
+        """Handle YouTube analysis button click event."""
+        try:
+            videos_df, comments_df, summary_html = run_youtube_analysis_pipeline(
+                api_key=None,
+                query=keywords,
+                max_videos_for_stats=max_videos,
+                num_videos_for_comments=num_comments_videos,
+                max_comments_per_video=max_comments,
+                published_after=published_after
+            )
+            youtube_results_state = (videos_df, comments_df)
+            yt_videos_csv = "youtube_videos.csv"
+            yt_comments_csv = "youtube_comments.csv"
+            if not videos_df.empty:
+                videos_df.to_csv(yt_videos_csv, index=False)
+                yt_videos_download_file = gr.File(value=yt_videos_csv, visible=True)
+            else:
+                yt_videos_download_file = gr.File(visible=False)
+            if not comments_df.empty:
+                if "video_title" not in comments_df.columns and "video_id" in comments_df.columns:
+                    title_map = videos_df.set_index("video_id")["video_title"].to_dict()
+                    comments_df["video_title"] = comments_df["video_id"].map(title_map)
+                if "channel" not in comments_df.columns and "channel_title" in comments_df.columns:
+                    comments_df["channel"] = comments_df["channel_title"]
+                comments_df.to_csv(yt_comments_csv, index=False)
+                yt_comments_download_file = gr.File(value=yt_comments_csv, visible=True)
+            else:
+                yt_comments_download_file = gr.File(visible=False)
+            dashboard = generate_youtube_dashboard(videos_df, comments_df)
+            return (
+                videos_df,
+                yt_videos_download_file,
+                comments_df,
+                yt_comments_download_file,
+                summary_html,
+                dashboard["kpi_yt_videos_found"],
+                dashboard["kpi_yt_views_scanned"],
+                dashboard["kpi_yt_comments_scraped"],
+                dashboard["yt_channel_plot"],
+                dashboard["yt_channel_dominance_plot"],
+                dashboard["yt_time_series_plot"],
+                dashboard["yt_top_videos_plot"],
+                dashboard["yt_content_quadrant_plot"],
+                dashboard["yt_engagement_plot"],
+                dashboard["yt_wordcloud_plot"],
+                dashboard["yt_detailed_summary"]
+            )
+        except Exception as e:
+            logger.error(f"Error in YouTube button handler: {str(e)}")
+            gr.Error(f"An error occurred during YouTube analysis: {str(e)}")
+            return (
+                pd.DataFrame(),                # yt_results_df
+                gr.File(visible=False),         # yt_videos_download_file
+                pd.DataFrame(),                # yt_comments_df
+                gr.File(visible=False),         # yt_comments_download_file
+                gr.HTML(""),                   # yt_dashboard_html
+                gr.HTML(""),                   # kpi_yt_videos_found
+                gr.HTML(""),                   # kpi_yt_views_scanned
+                gr.HTML(""),                   # kpi_yt_comments_scraped
+                None,                          # yt_channel_plot
+                None,                          # yt_channel_dominance_plot
+                None,                          # yt_time_series_plot
+                None,                          # yt_top_videos_plot
+                None,                          # yt_content_quadrant_plot
+                None,                          # yt_engagement_plot
+                None,                          # yt_wordcloud_plot
+                gr.HTML("")                    # yt_detailed_summary
+            )
+
+    start_youtube_analysis_button.click(
+        fn=youtube_button_handler,
+        inputs=[
+            yt_search_keywords, 
+            yt_max_videos_slider, 
+            yt_num_videos_comments_slider, 
+            yt_max_comments_slider, 
+            yt_published_after
+        ],
+        outputs=[
+            yt_results_df,
+            yt_videos_download_file,
+            yt_comments_df,
+            yt_comments_download_file,
+            yt_dashboard_html,
+            kpi_yt_videos_found,
+            kpi_yt_views_scanned,
+            kpi_yt_comments_scraped,
+            yt_channel_plot,
+            yt_channel_dominance_plot,
+            yt_time_series_plot,
+            yt_top_videos_plot,
+            yt_content_quadrant_plot,
+            yt_engagement_plot,
+            yt_wordcloud_plot,
+            yt_detailed_summary
+        ]
+    )
+    if __name__ == "__main__":
+        app.launch(debug=True, share=True)
