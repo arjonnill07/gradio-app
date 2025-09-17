@@ -298,7 +298,11 @@ def run_news_scraper_pipeline(search_keywords, sites, start_date_str, end_date_s
         df = df[mask]
     
     # Return both full dataset and filtered display dataset
-    return df, df[['published_date', 'title', 'media', 'desc', 'link']].sort_values(by='published_date', ascending=False)
+    # Always return all Google News fields (published_date, title, media, description, link)
+    # Some sources use 'desc', some use 'description'. Unify to 'description'.
+    if 'desc' in df.columns and 'description' not in df.columns:
+        df['description'] = df['desc']
+    return df, df[['published_date', 'title', 'media', 'description', 'link']].sort_values(by='published_date', ascending=False)
 
 # ==============================================================================
 # YOUTUBE ANALYZER BACKEND
@@ -306,7 +310,7 @@ def run_news_scraper_pipeline(search_keywords, sites, start_date_str, end_date_s
 def run_youtube_analysis_pipeline(api_key, query, max_videos_for_stats, num_videos_for_comments, max_comments_per_video, published_after, progress=gr.Progress()):
     """Complete YouTube analysis pipeline with robust error handling."""
     # Use integrated API key for seamless experience
-    api_key = os.getenv("YOUTUBE_API_KEY", "AIzaSyB_f3uROqZfwBWsc_sDEV63WmUHBgvGGqw")
+    api_key = os.getenv("YOUTUBE_API_KEY", "AIzaSyAiiGsKTJyIe4SRfC2uUXwhQ6KO-DEjgIA")
     
     if not query: 
         raise gr.Error("Search Keywords are required.")
@@ -553,9 +557,17 @@ def generate_scraper_dashboard(df: pd.DataFrame):
         fig_media, ax = plt.subplots(figsize=(8, 6))
         media_counts.plot(kind='barh', ax=ax, color='skyblue')
         ax.set_title("Top 15 Media Sources", fontproperties=BANGLA_FONT)
-        ax.set_yticklabels(media_counts.index, fontproperties=BANGLA_FONT)
-    ax.set_xlabel("Article Count", fontproperties=BANGLA_FONT)
-    plt.tight_layout()
+        ax.set_xlabel("Article Count", fontproperties=BANGLA_FONT)
+        ax.set_ylabel("মিডিয়া", fontproperties=BANGLA_FONT)
+        yticks = np.arange(len(media_counts.index))
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(media_counts.index, fontproperties=BANGLA_FONT, fontsize=12)
+        # Ensure all tick labels use Bengali font
+        for label in ax.get_xticklabels():
+            label.set_fontproperties(BANGLA_FONT)
+        for label in ax.get_yticklabels():
+            label.set_fontproperties(BANGLA_FONT)
+        plt.tight_layout()
     
     # Word cloud generation
     fig_wc = None
@@ -617,6 +629,59 @@ def generate_scraper_dashboard(df: pd.DataFrame):
     }
 
 def generate_youtube_dashboard(videos_df, comments_df):
+    # Channel dominance by view
+    fig_channel_dominance = None
+    if videos_df is not None and not videos_df.empty and 'channel' in videos_df.columns:
+        channel_views = videos_df.groupby('channel')['view_count'].sum().sort_values(ascending=False).head(10)
+        if not channel_views.empty:
+            fig_channel_dominance, ax = plt.subplots(figsize=(10, 6))
+            channel_views.plot(kind='barh', ax=ax, color='slateblue')
+            ax.set_title("Top 10 Dominant Channels by View Count", fontproperties=BANGLA_FONT)
+            ax.set_xlabel("মোট ভিউ", fontproperties=BANGLA_FONT)
+            ax.set_ylabel("চ্যানেল", fontproperties=BANGLA_FONT)
+            yticks = np.arange(len(channel_views.index))
+            ax.set_yticks(yticks)
+            ax.set_yticklabels(channel_views.index, fontproperties=BANGLA_FONT, fontsize=12)
+            plt.tight_layout()
+    dashboard_components["yt_channel_dominance_plot"] = fig_channel_dominance
+
+    # Content performance quadrant
+    fig_quadrant = None
+    if videos_df is not None and not videos_df.empty:
+        try:
+            # Define quadrant boundaries
+            median_views = videos_df['view_count'].median()
+            median_engagement = videos_df['engagement_rate'].median()
+            fig_quadrant, ax = plt.subplots(figsize=(10, 8))
+            scatter = ax.scatter(
+                videos_df['view_count'],
+                videos_df['engagement_rate'],
+                c='darkorange', alpha=0.7
+            )
+            ax.axvline(median_views, color='blue', linestyle='--', label='Median Views')
+            ax.axhline(median_engagement, color='green', linestyle='--', label='Median Engagement')
+            ax.set_xlabel("মোট ভিউ", fontproperties=BANGLA_FONT)
+            ax.set_ylabel("এনগেজমেন্ট রেট", fontproperties=BANGLA_FONT)
+            ax.set_title("Content Performance Quadrant", fontproperties=BANGLA_FONT)
+            plt.tight_layout()
+        except Exception as e:
+            logger.error(f"Quadrant plot failed: {e}")
+    dashboard_components["yt_content_quadrant_plot"] = fig_quadrant
+
+    # Detailed analysis summary from YouTube API
+    detailed_summary = ""
+    if videos_df is not None and not videos_df.empty:
+        top_video = videos_df.iloc[0]
+        detailed_summary = f"<div style='background:#e3f2fd;padding:12px;border-radius:8px;margin-bottom:8px;'>"
+        detailed_summary += f"<b>Top Video:</b> {top_video['video_title']}<br>"
+        detailed_summary += f"<b>Channel:</b> {top_video['channel']}<br>"
+        detailed_summary += f"<b>Views:</b> {top_video['view_count']:,}<br>"
+        detailed_summary += f"<b>Likes:</b> {top_video['like_count']:,}<br>"
+        detailed_summary += f"<b>Comments:</b> {top_video['comment_count']:,}<br>"
+        detailed_summary += f"<b>Published:</b> {top_video['published_date'].strftime('%Y-%m-%d')}<br>"
+        detailed_summary += f"<b>Engagement Rate:</b> {top_video['engagement_rate']:.2f}"
+        detailed_summary += "</div>"
+    dashboard_components["yt_detailed_summary"] = gr.HTML(detailed_summary)
     """Generate comprehensive dashboard from YouTube analysis results."""
     # Initialize all dashboard components
     dashboard_components = {
@@ -715,8 +780,11 @@ def generate_youtube_dashboard(videos_df, comments_df):
             fig_top_videos, ax = plt.subplots(figsize=(10, 6))
             top_videos.plot(kind='barh', ax=ax, color='dodgerblue')
             ax.set_title("Top 10 Videos by Comment Count", fontproperties=BANGLA_FONT)
-            ax.set_xlabel("Comment Count", fontproperties=BANGLA_FONT)
-            ax.set_yticklabels(top_videos.index, fontproperties=BANGLA_FONT)
+            ax.set_xlabel("মন্তব্য সংখ্যা", fontproperties=BANGLA_FONT)
+            ax.set_ylabel("ভিডিও শিরোনাম", fontproperties=BANGLA_FONT)
+            yticks = np.arange(len(top_videos.index))
+            ax.set_yticks(yticks)
+            ax.set_yticklabels(top_videos.index, fontproperties=BANGLA_FONT, fontsize=12)
             plt.tight_layout()
     dashboard_components["yt_top_videos_plot"] = fig_top_videos
     
@@ -741,8 +809,11 @@ def generate_youtube_dashboard(videos_df, comments_df):
                     fig_engagement, ax = plt.subplots(figsize=(10, 6))
                     ax.barh(top_engagement['video_title'], top_engagement['engagement_rate'], color='mediumseagreen')
                     ax.set_title("Top 10 Videos by Engagement Rate", fontproperties=BANGLA_FONT)
-                    ax.set_xlabel("Engagement Rate (Comments / Views)", fontproperties=BANGLA_FONT)
-                    ax.set_yticklabels(top_engagement['video_title'], fontproperties=BANGLA_FONT)
+                    ax.set_xlabel("এনগেজমেন্ট রেট (মন্তব্য/ভিউ)", fontproperties=BANGLA_FONT)
+                    ax.set_ylabel("ভিডিও শিরোনাম", fontproperties=BANGLA_FONT)
+                    yticks = np.arange(len(top_engagement['video_title']))
+                    ax.set_yticks(yticks)
+                    ax.set_yticklabels(top_engagement['video_title'], fontproperties=BANGLA_FONT, fontsize=12)
                     plt.tight_layout()
             except Exception as e:
                 logger.error(f"Engagement rate calculation failed: {e}")
@@ -928,24 +999,29 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
                                 yt_channel_plot = gr.Plot(
                                     label="Top Channels by Video Volume"
                                 )
+                                yt_channel_dominance_plot = gr.Plot(
+                                    label="Channel Dominance by View Count"
+                                )
                             with gr.Column():
                                 yt_time_series_plot = gr.LinePlot(
                                     label="Comment Activity Over Time"
                                 )
-                        
                         with gr.Row():
                             with gr.Column():
                                 yt_top_videos_plot = gr.Plot(
                                     label="Top Videos by Comment Count"
                                 )
+                                yt_content_quadrant_plot = gr.Plot(
+                                    label="Content Performance Quadrant"
+                                )
                             with gr.Column():
                                 yt_engagement_plot = gr.Plot(
                                     label="Top Videos by Engagement Rate"
                                 )
-                        
                         yt_wordcloud_plot = gr.Plot(
                             label="Bengali Word Cloud from Comments"
                         )
+                        yt_detailed_summary = gr.HTML()
 
     # --- EVENT HANDLERS ---
     def scraper_button_handler(search_keywords, sites, start_date, end_date, interval, max_pages, filter_keys):
@@ -1019,43 +1095,59 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
         try:
             videos_df, comments_df, summary_html = run_youtube_analysis_pipeline(
                 api_key=None,
-                query=keywords,
-                max_videos_for_stats=max_videos,
-                num_videos_for_comments=num_comments_videos,
-                max_comments_per_video=max_comments,
-                published_after=published_after
-            )
-            
-            # Update the state with the results
-            youtube_results_state = (videos_df, comments_df)
-            
-            # Generate dashboard visualizations
-            dashboard = generate_youtube_dashboard(videos_df, comments_df)
-            
-            return (
-                videos_df,
-                comments_df,
-                summary_html,
-                dashboard["kpi_yt_videos_found"],
-                dashboard["kpi_yt_views_scanned"],
-                dashboard["kpi_yt_comments_scraped"],
-                dashboard["yt_channel_plot"],
-                dashboard["yt_time_series_plot"],
-                dashboard["yt_top_videos_plot"],
-                dashboard["yt_engagement_plot"],
-                dashboard["yt_wordcloud_plot"]
-            )
-        except Exception as e:
-            logger.error(f"Error in YouTube button handler: {str(e)}")
-            gr.Error(f"An error occurred during YouTube analysis: {str(e)}")
-            # Return empty values to reset the UI
-            return (
-                pd.DataFrame(), 
-                pd.DataFrame(),
-                gr.HTML(""),
-                gr.HTML(""), gr.HTML(""), gr.HTML(""),
-                None, None, None, None, None
-            )
+                dashboard = {
+                    "kpi_yt_videos_found": gr.HTML("") ,
+                    "kpi_yt_views_scanned": gr.HTML("") ,
+                    "kpi_yt_comments_scraped": gr.HTML("") ,
+                    "yt_channel_plot": None,
+                    "yt_channel_dominance_plot": None,
+                    "yt_time_series_plot": None,
+                    "yt_top_videos_plot": None,
+                    "yt_content_quadrant_plot": None,
+                    "yt_engagement_plot": None,
+                    "yt_wordcloud_plot": None,
+                    "yt_detailed_summary": gr.HTML("")
+                }
+                try:
+                    videos_df, comments_df, summary_html = run_youtube_analysis_pipeline(
+                        api_key=None,
+                        query=keywords,
+                        max_videos_for_stats=max_videos,
+                        num_videos_for_comments=num_comments_videos,
+                        max_comments_per_video=max_comments,
+                        published_after=published_after
+                    )
+                    # Update the state with the results
+                    youtube_results_state = (videos_df, comments_df)
+                    # Generate dashboard visualizations
+                    dashboard = generate_youtube_dashboard(videos_df, comments_df)
+                    return (
+                        videos_df,
+                        comments_df,
+                        summary_html,
+                        dashboard["kpi_yt_videos_found"],
+                        dashboard["kpi_yt_views_scanned"],
+                        dashboard["kpi_yt_comments_scraped"],
+                        dashboard["yt_channel_plot"],
+                        dashboard["yt_channel_dominance_plot"],
+                        dashboard["yt_time_series_plot"],
+                        dashboard["yt_top_videos_plot"],
+                        dashboard["yt_content_quadrant_plot"],
+                        dashboard["yt_engagement_plot"],
+                        dashboard["yt_wordcloud_plot"],
+                        dashboard["yt_detailed_summary"]
+                    )
+                except Exception as e:
+                    logger.error(f"Error in YouTube button handler: {str(e)}")
+                    gr.Error(f"An error occurred during YouTube analysis: {str(e)}")
+                    # Return empty values to reset the UI
+                    return (
+                        pd.DataFrame(),
+                        pd.DataFrame(),
+                        gr.HTML(""),
+                        gr.HTML(""), gr.HTML(""), gr.HTML(""),
+                        None, None, None, None, None, None, None, gr.HTML("")
+                    )
     
     start_youtube_analysis_button.click(
         fn=youtube_button_handler,
@@ -1074,10 +1166,13 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
             kpi_yt_views_scanned,
             kpi_yt_comments_scraped,
             yt_channel_plot,
+            yt_channel_dominance_plot,
             yt_time_series_plot,
             yt_top_videos_plot,
+            yt_content_quadrant_plot,
             yt_engagement_plot,
-            yt_wordcloud_plot
+            yt_wordcloud_plot,
+            yt_detailed_summary
         ]
     )
 
