@@ -34,12 +34,12 @@ logger.info("Application starting up.")
 
 # --- APPLICATION CONFIGURATION ---
 APP_TITLE = "Social Perception Analyzer"
-APP_TAGLINE = "Prepared for the Policymakers of Bangladesh Nationalist Party (BNP)"
-APP_FOOTER = "Developed by CDSR"
+APP_TAGLINE = "Analyze GoogleNews & YouTube video trends, engagement, and comment activity for your search topics."
+APP_FOOTER = "Developed by Arjon"
 
 # --- FONT CONFIGURATION ---
 FONT_PATH = 'NotoSansBengali-Regular.ttf'
-BANGLA_FONT = None
+BANGLA_FONT = FONT_PATH
 
 def setup_bangla_font():
     """Properly set up Bengali font for all visualizations"""
@@ -99,6 +99,7 @@ PHRASES_TO_JOIN = {
     "তারেক রহমান": "তারেক_রহমান",
     "খালেদা জিয়া": "খালেদা_জিয়া",
     "বিএনপি জিন্দাবাদ": "বিএনপি_জিন্দাবাদ"
+    
 }
 
 def get_dynamic_time_agg(start_date, end_date):
@@ -919,7 +920,7 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
                     gr.Markdown("### Search Criteria")
                     search_keywords_textbox = gr.Textbox(
                         label="Search Keywords", 
-                        placeholder="e.g., বিএনপি সমাবেশ", 
+                        placeholder="e.g., বাংলাদেশ, নির্বাচন", 
                         info="Keywords to search for in news articles."
                     )
                     sites_to_search_textbox = gr.Textbox(
@@ -951,7 +952,7 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
                     )
                     filter_keywords_textbox = gr.Textbox(
                         label="Filter Keywords (comma-separated, optional)", 
-                        placeholder="e.g., নির্বাচন, সরকার", 
+                        placeholder="e.g., ডাকসু, নোবেল", 
                         info="Filter results by these keywords."
                     )
                     
@@ -1006,7 +1007,7 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
                 with gr.Column(scale=1):
                     yt_search_keywords = gr.Textbox(
                         label="YouTube Search Keywords", 
-                        placeholder="e.g., BNP Rally", 
+                        placeholder="e.g., ক্রিকেট", 
                         info="Keywords to search for in YouTube videos."
                     )
                     yt_max_videos_slider = gr.Slider(
@@ -1638,5 +1639,10 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange"),
             yt_detailed_summary
         ]
     )
+    AUTH_USERS = [
+        ("admin", "admin123"),
+        ("user", "user123")
+    ]
+
     if __name__ == "__main__":
-        app.launch(debug=True, share=True)
+        app.launch(debug=True, share=True, auth=AUTH_USERS, ssr_mode=False)
